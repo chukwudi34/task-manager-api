@@ -68,5 +68,3 @@ API Endpoints (Sample)
 | GET    | `/api/tasks`      | List all tasks    |
 | POST   | `/api/tasks`      | Create a new task |
 | GET    | `/api/tasks/{id}` | Get task by ID    |
-|        |                   |                   |
-| DELETE | `/api/tasks/{id}` | Delete a task     |
