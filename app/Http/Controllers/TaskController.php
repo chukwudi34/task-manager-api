@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Plan;
 use Illuminate\Http\Request;
 use App\Models\Task;
+use Illuminate\Support\Facades\DB;
 
 class TaskController extends Controller
 {
@@ -160,8 +161,11 @@ class TaskController extends Controller
      *     )
      * )
      */
+
     public function createTask(Request $request)
     {
+        DB::beginTransaction();
+
         try {
             $validated = $request->validate([
                 'user_id' => 'required|exists:users,id',
@@ -172,27 +176,33 @@ class TaskController extends Controller
 
             $task = Task::create($validated);
 
+            DB::commit();
+
             return response()->json([
                 'message' => 'Task created successfully.',
                 'data' => $task,
             ], 201);
         } catch (\Illuminate\Validation\ValidationException $e) {
+            DB::rollBack();
             return response()->json([
                 'message' => 'Validation failed.',
                 'errors' => $e->errors(),
             ], 422);
         } catch (\Illuminate\Database\QueryException $e) {
+            DB::rollBack();
             return response()->json([
                 'message' => 'Database error.',
                 'error' => $e->getMessage(),
             ], 500);
         } catch (\Exception $e) {
+            DB::rollBack();
             return response()->json([
                 'message' => 'An unexpected error occurred.',
                 'error' => $e->getMessage(),
             ], 500);
         }
     }
+
 
 
 
