@@ -8,11 +8,12 @@ class Transaction extends Model
 {
     protected $fillable = [
         'user_id',
-        'amount_paid',
+        'amount',
         'status',
         'type',
         'plan_id',
-        'raw_response'
+        'raw_response',
+        'subscriber_id'
     ];
 
     public function user()

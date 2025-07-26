@@ -17,6 +17,7 @@ Route::prefix('tasks')->name('task.')->group(function () {
     Route::post('/', [TaskController::class, 'createTask'])->name('createTask');       // POST /tasks
     Route::delete('{id}', [TaskController::class, 'deleteTask'])->name('deleteTask');  // DELETE /tasks/{id}
     Route::get('{id}', [TaskController::class, 'showSingleTask'])->name('showSingleTask'); // GET /tasks/{id}
+    Route::put('{id}', [TaskController::class, 'updateTask'])->name('updateTask'); // PUT /tasks/{id}
 });
 
 

@@ -35,89 +35,91 @@ class TransactionController extends Controller
                 'full_name' => 'required|string|max:255',
                 'email' => 'required|email',
                 'plan' => 'required|string',
-                'amount' => 'required|numeric|min:0'
+                'amount' => 'required|numeric|min:0',
+                'user_id' => 'sometimes'
             ]);
 
-            $user = User::updateOrCreate(
-                ['email' => $validated['email']],
-                ['full_name' => $validated['full_name']]
-            );
+            // Safely extract user_id
+            $user_id = $validated['user_id'] ?? null;
 
-            // $plan_type = strtolower($validated['plan']);
+            if (is_null($user_id)) {
+                $user = User::updateOrCreate(
+                    ['email' => $validated['email']],
+                    ['full_name' => $validated['full_name']]
+                );
+                $user_id = $user->id;
+            }
+
             $plan = Plan::where('name', 'Pro')->first();
 
             if (is_null($plan)) {
                 return response()->json(['message' => 'This Plan Schedule is not set', 'status' => false], 400);
             }
 
-            // Create transaction
             $transaction = Transaction::create([
-                'subscriber_id' => $user->id,
-                'amount_paid' => $validated['amount'],
+                'subscriber_id' => $user_id,
+                'amount' => $validated['amount'],
                 'status' => 'pending',
-                'plan_id' =>  $plan->id
+                'plan_id' => $plan->id
             ]);
+
+            return response()->json(['message' => 'Transaction Successful', 'status' => true, 'data' => $transaction], 200);
         } catch (\Exception $e) {
             return response()->json(['error' => $e->getMessage(), 'status' => false], 500);
         }
     }
 
-    public function verifyPayment(array $reQueryResponse)
+
+    public function verifyPayment(Request $request)
     {
-        return $reQueryResponse;
         try {
-            // Ensure the necessary keys exist in the response
+            $reQueryResponse = $request->all(); // Get full request payload
+
             if (
-                !isset($reQueryResponse['status']) ||
-                !isset($reQueryResponse['data']['transaction_status']) ||
-                !isset($reQueryResponse['data']['refrence_id'])
+                !isset($reQueryResponse['reference']) ||
+                !isset($reQueryResponse['tran_id'])
             ) {
                 return response()->json([
-                    'message' => 'Invalid payment response structure.'
+                    'message' => 'Invalid request data.'
                 ], 400);
             }
 
-            $referenceId = $reQueryResponse['data']['refrence_id'];
-            $transaction = null;
+            $status = strtolower($reQueryResponse['reference']['status']);
+            $reference = $reQueryResponse['reference']['reference'];
+            $message = strtolower($reQueryResponse['reference']['message']);
+            $transaction_id = $reQueryResponse['tran_id'];
 
-            if (
-                $reQueryResponse['status'] === 'success' &&
-                $reQueryResponse['data']['transaction_status'] === 'approved'
-            ) {
-                $transaction = Transaction::where('refrence_id', $referenceId)->first();
+            $transaction = Transaction::find($transaction_id);
 
-                if ($transaction) {
+            if ($transaction) {
+                if ($status === 'success' && $message === 'approved') {
                     $transaction->update([
-                        'amount_paid' => $reQueryResponse['data']['original_amount'] ?? 0,
-                        'transaction_status' => 'approved',
+                        'status' => 'approved',
+                        'raw_response' => json_encode($reQueryResponse),
+                    ]);
+                } else {
+                    $transaction->update([
+                        'status' => 'declined',
                         'raw_response' => json_encode($reQueryResponse),
                     ]);
                 }
-            } else {
-                $transaction = Transaction::where('transaction_batch_id', $referenceId)->first();
 
-                if ($transaction) {
-                    $transaction->update([
-                        'transaction_status' => 'declined',
-                        'amount_paid' => 0,
-                    ]);
-                }
-            }
-
-            if ($transaction) {
                 return response()->json([
                     'message' => 'Transaction updated successfully.',
-                    'data' => $transaction->fresh()
+                    'data' => $transaction->fresh(),
+                    'status' => true
                 ], 200);
             }
 
             return response()->json([
-                'message' => 'Transaction not found.'
+                'message' => 'Transaction not found.',
+                'status' => false
             ], 404);
         } catch (\Throwable $th) {
             return response()->json([
                 'message' => 'An error occurred while verifying the payment.',
-                'error' => $th->getMessage()
+                'error' => $th->getMessage(),
+                'status' => false
             ], 500);
         }
     }

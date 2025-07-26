@@ -290,16 +290,38 @@ class TaskController extends Controller
             return response()->json([
                 'message' => 'Task retrieved successfully.',
                 'data' => $task,
+                'status' => true
             ], 200);
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             return response()->json([
                 'message' => 'Task not found.',
+                'status' => false
             ], 404);
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'An unexpected error occurred.',
                 'error' => $e->getMessage(),
+                'status' => true
+
             ], 500);
         }
+    }
+
+    public function updateTask(Request $request, $id)
+    {
+        $task = Task::find($id);
+        if (!$task) {
+            return response()->json(['message' => 'Task not found'], 404);
+        }
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'description' => 'sometimes|string|nullable',
+            'status' => 'sometimes|string',
+        ]);
+
+        $task->update($validated);
+
+        return response()->json($task);
     }
 }
