@@ -96,7 +96,7 @@ class TaskController extends Controller
                 $query->whereDate('created_at', $request->input('date'));
             }
 
-            $tasks = $query->get();
+            $tasks = $query->orderBy('created_at', 'asc')->get();
 
             return response()->json($tasks, 200);
         } catch (\Exception $e) {
